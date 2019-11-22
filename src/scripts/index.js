@@ -1,20 +1,62 @@
-import '../styles/index.scss';
+import '../styles/index.scss'
 
-const element = {
-  type: "h1",
-  props: {
-    title: "foo",
-    children: "Hello World",
-  },
-};
+function createElement(type, props, ...children){
+  return {
+    type,
+    props: {
+      ...props,
+      children: children.map(child =>
+        typeof child === "object"
+          ? child
+          : createTextElement(child)
+      )
+    }
+  }
+}
 
-const container = document.getElementById("root");
+function createTextElement(text)  {
+  return {
+    type: "TEXT_ELEMENT",
+    props: {
+      nodeValue: text,
+      children: []
+    }
+  }
+}
 
-const node =document.createElement(element.type);
-node["title"] = element.props.title;
+function render(element, container){
+  const dom =
+    element.type == "TEXT_ELEMENT"
+      ? document.createTextNode("")
+      : document.createElement(element.type)
 
-const text = document.createTextNode("");
-text["nodeValue"] = element.props.children;
+  const isProperty = key => key !== "children"
+  Object.keys(element.props)
+    .filter(isProperty)
+    .forEach(name => {
+      dom[name] = element.props[name]
+    })
 
-node.appendChild(text);
-container.appendChild(node);
+  element.props.children.forEach(child =>
+    render(child, dom)
+  )
+
+  container.appendChild(dom)
+}
+
+const JReact = {
+  createElement,
+  render
+}
+
+/** @jsx JReact.createElement */
+
+const element = (
+  <div id="foo">
+    <h1>Hello World</h1>
+  </div>
+)
+
+const container = document.getElementById("root")
+
+JReact.render(element, container)
