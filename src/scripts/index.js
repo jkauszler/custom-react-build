@@ -39,18 +39,40 @@ function createCom(fiber){
     })
 }
 
+function commitRoot(){
+  commitWork(wipRoot.child)
+  wipRoot = null
+}
+
+// Here we recursively append all the nodes to the dom.
+
+function commitWork(fiber) {
+  if (!fiber){
+    return
+  }
+  const domParent = fiber.parent.dom
+  domParent.appendChild(fiber.dom)
+  commitWork(fiber.child)
+  commitWork(fiber.sibling)
+}
+
 // In the render function we set nextUnitOfWork to the root of the fiber tree.
 
 function render(element, container){
-  nextUnitOfWork = {
+  // Keep track of the root of the fiber tree.
+  // We call it the work in progress root or wipRoot.
+
+  wipRoot = {
     dom: container,
     props: {
       children: [element]
     }
   }
+  nextUnitOfWork = wipRoot
 }
 
 let nextUnitOfWork = null
+let wipRoot = null
 
 function workLoop(deadline) {
   let shouldYield = false
@@ -63,7 +85,9 @@ function workLoop(deadline) {
     )
     shouldYield = deadline.timeRemaining() < 1
   }
-  requestIdleCallback(workLoop)
+  if (!nextUnitOfWork && wipRoot){
+    commitRoot()
+  }
 }
 
 requestIdleCallback(workLoop)
@@ -74,10 +98,6 @@ function performUnitOfWork(fiber) {
 
   if (!fiber.dom) {
     fiber.dom = createDom(fiber)
-  }
-
-  if (fiber.parent) {
-    fiber.parent.dom.appendChild(fiber.dom)
   }
 
   // For each child we create a new fiber.
